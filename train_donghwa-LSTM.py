@@ -29,6 +29,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+def _average_gradients(model):
+    # Gradient averaging.
+    size = float(dist.get_world_size())
+    for param in model.parameters():
+        #dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM, group=0) old pytorch version
+        dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
+        param.grad.data /= size
+
 
 class Encoder(nn.Module):
 

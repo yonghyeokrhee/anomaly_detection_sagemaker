@@ -56,6 +56,14 @@ class Net(nn.Module):
         z = self.encoder(x)
         return self.decoder(z)
 
+def _average_gradients(model):
+    # Gradient averaging.
+    size = float(dist.get_world_size())
+    for param in model.parameters():
+        #dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM, group=0) old pytorch version
+        dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
+        param.grad.data /= size    
+    
 def data_loader(batch_size, training_dir, is_distributed, **kwargs):
     logger.info("Get train data loader")
     logger.info(training_dir)
@@ -119,6 +127,7 @@ def train(args):
             loss.backward()
             if is_distributed and not use_cuda:
                 # average gradients manually for multi-machine cpu case only
+                # only one instance works for now . define _average_gradients above make it work.
                 _average_gradients(model)
             optimizer.step()
             if batch_idx % args.log_interval == 0:
